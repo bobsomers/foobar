@@ -4,7 +4,8 @@ version = "0.1.0"
 authors = ["Bob Somers <bob@bobsomers.com>"]
 
 [dependencies]
-libc = "0.2.*"
+libc = "^0.2.36"
+lazy_static = "^1.0.0"
 
 [build-dependencies]
-cc = "1.*"
+cc = "^1.0.4"

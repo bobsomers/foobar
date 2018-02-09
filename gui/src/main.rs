@@ -1,3 +1,6 @@
+extern crate glfw;
+
 fn main() {
-    println!("Hello, world!");
+    let mut glfw = glfw::init().unwrap();
+    println!("Hello, GLFW!");
 }
