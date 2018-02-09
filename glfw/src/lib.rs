@@ -3,14 +3,14 @@ extern crate lazy_static;
 extern crate libc;
 
 use libc::{c_char, c_int};
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
+use std::ptr;
 use std::sync::Mutex;
 
 mod sys;
 
 #[derive(Clone, Debug)]
 pub enum Error {
-    Unknown(String),
     NotInitialized(String),
     NoCurrentContext(String),
     InvalidEnum(String),
@@ -40,49 +40,42 @@ impl Error {
             _ => panic!("GLFW returned unknown error code: {}: {}", code, description)
         }
     }
-
-    fn unknown() -> Error {
-        Error::Unknown(String::from("No error was set by the GLFW error callback."))
-    }
 }
 
 lazy_static! {
     static ref RUST_GLFW_ERROR: Mutex<Option<Error>> = Mutex::new(None);
 }
 
+// TODO: After initialization, should this just panic! with an error message?
+// It's likely too slow to call after every function.
 extern fn rust_glfw_error_callback(error: c_int, description: *const c_char) {
     let description = unsafe { CStr::from_ptr(description) };
     *(RUST_GLFW_ERROR.lock().unwrap()) = Some(Error::from_glfw(error, description))
 }
 
-fn get_error_and_clear() -> Error {
+fn check_for_error() -> Result<(), Error> {
     let mut result = RUST_GLFW_ERROR.lock().unwrap();
     let err = result.clone();
     *result = None;
     match err {
-        Some(e) => e,
-        None => Error::unknown(),
+        Some(e) => Err(e),
+        None => Ok(()),
     }
 }
 
 pub struct Glfw {}
 
+pub struct Window {
+    window: *mut sys::GLFWwindow,
+}
+
 pub fn init() -> Result<Glfw, Error> {
-    let result = unsafe {
+    unsafe {
         sys::glfwSetErrorCallback(rust_glfw_error_callback);
         sys::glfwInit()
     };
-    if result == sys::GLFW_TRUE {
-        Ok(Glfw {})
-    } else {
-        Err(get_error_and_clear())
-    }
-}
-
-impl Drop for Glfw {
-    fn drop(&mut self) {
-        unsafe { sys::glfwTerminate(); }
-    }
+    check_for_error()?;
+    Ok(Glfw {})
 }
 
 pub fn get_version() -> (i32, i32, i32) {
@@ -102,6 +95,54 @@ pub fn get_version_string() -> String {
         CStr::from_ptr(sys::glfwGetVersionString())
             .to_string_lossy()
             .into_owned()
+    }
+}
+
+
+impl Drop for Glfw {
+    fn drop(&mut self) {
+        unsafe { sys::glfwTerminate(); }
+    }
+}
+
+impl Glfw {
+    // TODO: Add monitor/share arguments.
+    pub fn create_window(&mut self,
+                         width: i32,
+                         height: i32,
+                         title: &str) -> Result<Window, Error> {
+        let title = CString::new(title).unwrap();
+        let glfw_window = unsafe { sys::glfwCreateWindow(width as c_int,
+                                                         height as c_int,
+                                                         title.as_ptr(),
+                                                         ptr::null(),
+                                                         ptr::null()) };
+        check_for_error()?;
+        Ok(Window { window: glfw_window })
+    }
+
+    pub fn poll_events(&mut self) {
+        unsafe { sys::glfwPollEvents(); }
+    }
+}
+
+impl Drop for Window {
+    fn drop(&mut self) {
+        unsafe { sys::glfwDestroyWindow(self.window); }
+    }
+}
+
+impl Window {
+    pub fn make_context_current(&mut self) {
+        unsafe { sys::glfwMakeContextCurrent(self.window); }
+    }
+
+    pub fn window_should_close(&mut self) -> bool {
+        unsafe { sys::glfwWindowShouldClose(self.window) == sys::GLFW_TRUE }
+    }
+
+    pub fn swap_buffers(&mut self) {
+        unsafe { sys::glfwSwapBuffers(self.window); }
     }
 }
 
