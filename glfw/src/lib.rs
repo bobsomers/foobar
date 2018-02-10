@@ -1,25 +1,12 @@
 extern crate libc;
 
-use libc::{c_char, c_double, c_int, c_void};
+use libc::{c_int, c_void};
 use std::collections::VecDeque;
 use std::ffi::{CStr, CString};
 use std::ptr;
 
+mod cb;
 mod sys;
-
-// TODO: Can we do anything more robust than print to stderr?
-extern fn rust_glfw_error_callback(error: c_int, description: *const c_char) {
-    let desc = unsafe { CStr::from_ptr(description) };
-    eprintln!("GLFW Error {}: {}", error, desc.to_string_lossy().into_owned());
-}
-
-extern fn rust_glfw_cursor_pos_callback(window: *mut sys::GLFWwindow,
-                                        xpos: c_double,
-                                        ypos: c_double) {
-    let user_ptr = unsafe { sys::glfwGetWindowUserPointer(window) };
-    let events: &mut VecDeque<Event> = unsafe { &mut *(user_ptr as *mut VecDeque<Event>) };
-    events.push_back(Event::CursorPos(xpos as f64, ypos as f64));
-}
 
 #[derive(Debug)]
 pub enum Event {
@@ -35,7 +22,7 @@ pub struct Window {
 
 pub fn init() -> Glfw {
     unsafe {
-        sys::glfwSetErrorCallback(rust_glfw_error_callback);
+        sys::glfwSetErrorCallback(cb::rust_glfw_error);
         sys::glfwInit()
     };
     Glfw {}
@@ -107,7 +94,7 @@ impl Window {
             sys::glfwSetWindowUserPointer(window, user_ptr);
 
             // Set up event injection callbacks.
-            sys::glfwSetCursorPosCallback(window, rust_glfw_cursor_pos_callback);
+            sys::glfwSetCursorPosCallback(window, cb::rust_glfw_cursor_pos);
 
             // TODO: moar
         }
