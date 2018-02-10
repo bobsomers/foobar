@@ -1,6 +1,7 @@
 extern crate libc;
 
 use libc::{c_char, c_double, c_int, c_void};
+use std::collections::VecDeque;
 use std::ffi::{CStr, CString};
 use std::ptr;
 
@@ -16,29 +17,20 @@ extern fn rust_glfw_cursor_pos_callback(window: *mut sys::GLFWwindow,
                                         xpos: c_double,
                                         ypos: c_double) {
     let user_ptr = unsafe { sys::glfwGetWindowUserPointer(window) };
-    let cb: &mut Callbacks = unsafe { &mut *(user_ptr as *mut Callbacks) };
-    if let Some(ref mut callback) = cb.cursor_pos_cb {
-        callback(xpos as f64, ypos as f64);
-    }
+    let events: &mut VecDeque<Event> = unsafe { &mut *(user_ptr as *mut VecDeque<Event>) };
+    events.push_back(Event::CursorPos(xpos as f64, ypos as f64));
 }
 
-struct Callbacks {
-    cursor_pos_cb: Option<Box<FnMut(f64, f64)>>,
-}
-
-impl Callbacks {
-    fn new() -> Callbacks {
-        Callbacks {
-            cursor_pos_cb: None,
-        }
-    }
+#[derive(Debug)]
+pub enum Event {
+    CursorPos(f64, f64),
 }
 
 pub struct Glfw {}
 
 pub struct Window {
     window: *mut sys::GLFWwindow,
-    callbacks: Box<Callbacks>,
+    pub events: Box<VecDeque<Event>>,
 }
 
 pub fn init() -> Glfw {
@@ -107,25 +99,23 @@ impl Drop for Window {
 
 impl Window {
     fn new(window: *mut sys::GLFWwindow) -> Window {
-        let mut cb = Box::new(Callbacks::new());
+        let mut events = Box::new(VecDeque::new());
 
         unsafe {
-            // Associate this window's Rust callback table with the window in GLFW.
-            let user_ptr = &mut *cb as *mut _ as *mut c_void;
+            // Associate this window's event queue with the window in GLFW.
+            let user_ptr = &mut *events as *mut _ as *mut c_void;
             sys::glfwSetWindowUserPointer(window, user_ptr);
 
-            // Set up trampoline callbacks.
+            // Set up event injection callbacks.
             sys::glfwSetCursorPosCallback(window, rust_glfw_cursor_pos_callback);
+
+            // TODO: moar
         }
 
         Window {
             window: window,
-            callbacks: cb,
+            events: events,
         }
-    }
-
-    pub fn set_cursor_pos_callback(&mut self, callback: Box<FnMut(f64, f64)>) {
-        self.callbacks.cursor_pos_cb = Some(callback);
     }
 
     pub fn make_context_current(&mut self) {
