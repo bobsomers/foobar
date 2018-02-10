@@ -1,65 +1,36 @@
-#[macro_use]
-extern crate lazy_static;
 extern crate libc;
 
-use libc::{c_char, c_int};
+use libc::{c_char, c_double, c_int, c_void};
 use std::ffi::{CStr, CString};
 use std::ptr;
-use std::sync::Mutex;
 
 mod sys;
 
-#[derive(Clone, Debug)]
-pub enum Error {
-    NotInitialized(String),
-    NoCurrentContext(String),
-    InvalidEnum(String),
-    InvalidValue(String),
-    OutOfMemory(String),
-    ApiUnavailable(String),
-    VersionUnavailable(String),
-    PlatformError(String),
-    FormatUnavailable(String),
-    NoWindowContext(String),
+// TODO: Can we do anything more robust than print to stderr?
+extern fn rust_glfw_error_callback(error: c_int, description: *const c_char) {
+    let desc = unsafe { CStr::from_ptr(description) };
+    eprintln!("GLFW Error {}: {}", error, desc.to_string_lossy().into_owned());
 }
 
-impl Error {
-    fn from_glfw(code: c_int, description: &CStr) -> Error {
-        let description = description.to_string_lossy().into_owned();
-        match code {
-            sys::GLFW_NOT_INITIALIZED => Error::NotInitialized(description),
-            sys::GLFW_NO_CURRENT_CONTEXT => Error::NoCurrentContext(description),
-            sys::GLFW_INVALID_ENUM => Error::InvalidEnum(description),
-            sys::GLFW_INVALID_VALUE => Error::InvalidValue(description),
-            sys::GLFW_OUT_OF_MEMORY => Error::OutOfMemory(description),
-            sys::GLFW_API_UNAVAILABLE => Error::ApiUnavailable(description),
-            sys::GLFW_VERSION_UNAVAILABLE => Error::VersionUnavailable(description),
-            sys::GLFW_PLATFORM_ERROR => Error::PlatformError(description),
-            sys::GLFW_FORMAT_UNAVAILABLE => Error::FormatUnavailable(description),
-            sys::GLFW_NO_WINDOW_CONTEXT => Error::NoWindowContext(description),
-            _ => panic!("GLFW returned unknown error code: {}: {}", code, description)
-        }
+extern fn rust_glfw_cursor_pos_callback(window: *mut sys::GLFWwindow,
+                                        xpos: c_double,
+                                        ypos: c_double) {
+    let user_ptr = unsafe { sys::glfwGetWindowUserPointer(window) };
+    let cb: &mut Callbacks = unsafe { &mut *(user_ptr as *mut Callbacks) };
+    if let Some(ref mut callback) = cb.cursor_pos_cb {
+        callback(xpos as f64, ypos as f64);
     }
 }
 
-lazy_static! {
-    static ref RUST_GLFW_ERROR: Mutex<Option<Error>> = Mutex::new(None);
+struct Callbacks {
+    cursor_pos_cb: Option<Box<FnMut(f64, f64)>>,
 }
 
-// TODO: After initialization, should this just panic! with an error message?
-// It's likely too slow to call after every function.
-extern fn rust_glfw_error_callback(error: c_int, description: *const c_char) {
-    let description = unsafe { CStr::from_ptr(description) };
-    *(RUST_GLFW_ERROR.lock().unwrap()) = Some(Error::from_glfw(error, description))
-}
-
-fn check_for_error() -> Result<(), Error> {
-    let mut result = RUST_GLFW_ERROR.lock().unwrap();
-    let err = result.clone();
-    *result = None;
-    match err {
-        Some(e) => Err(e),
-        None => Ok(()),
+impl Callbacks {
+    fn new() -> Callbacks {
+        Callbacks {
+            cursor_pos_cb: None,
+        }
     }
 }
 
@@ -67,15 +38,15 @@ pub struct Glfw {}
 
 pub struct Window {
     window: *mut sys::GLFWwindow,
+    callbacks: Box<Callbacks>,
 }
 
-pub fn init() -> Result<Glfw, Error> {
+pub fn init() -> Glfw {
     unsafe {
         sys::glfwSetErrorCallback(rust_glfw_error_callback);
         sys::glfwInit()
     };
-    check_for_error()?;
-    Ok(Glfw {})
+    Glfw {}
 }
 
 pub fn get_version() -> (i32, i32, i32) {
@@ -98,7 +69,6 @@ pub fn get_version_string() -> String {
     }
 }
 
-
 impl Drop for Glfw {
     fn drop(&mut self) {
         unsafe { sys::glfwTerminate(); }
@@ -110,19 +80,22 @@ impl Glfw {
     pub fn create_window(&mut self,
                          width: i32,
                          height: i32,
-                         title: &str) -> Result<Window, Error> {
+                         title: &str) -> Window {
         let title = CString::new(title).unwrap();
         let glfw_window = unsafe { sys::glfwCreateWindow(width as c_int,
                                                          height as c_int,
                                                          title.as_ptr(),
                                                          ptr::null(),
                                                          ptr::null()) };
-        check_for_error()?;
-        Ok(Window { window: glfw_window })
+        Window::new(glfw_window)
     }
 
     pub fn poll_events(&mut self) {
         unsafe { sys::glfwPollEvents(); }
+    }
+
+    pub fn wait_events(&mut self) {
+        unsafe { sys::glfwWaitEvents(); }
     }
 }
 
@@ -133,6 +106,28 @@ impl Drop for Window {
 }
 
 impl Window {
+    fn new(window: *mut sys::GLFWwindow) -> Window {
+        let mut cb = Box::new(Callbacks::new());
+
+        unsafe {
+            // Associate this window's Rust callback table with the window in GLFW.
+            let user_ptr = &mut *cb as *mut _ as *mut c_void;
+            sys::glfwSetWindowUserPointer(window, user_ptr);
+
+            // Set up trampoline callbacks.
+            sys::glfwSetCursorPosCallback(window, rust_glfw_cursor_pos_callback);
+        }
+
+        Window {
+            window: window,
+            callbacks: cb,
+        }
+    }
+
+    pub fn set_cursor_pos_callback(&mut self, callback: Box<FnMut(f64, f64)>) {
+        self.callbacks.cursor_pos_cb = Some(callback);
+    }
+
     pub fn make_context_current(&mut self) {
         unsafe { sys::glfwMakeContextCurrent(self.window); }
     }
