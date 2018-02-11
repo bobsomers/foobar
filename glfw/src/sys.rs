@@ -12,13 +12,21 @@ pub const OPENGL_ANY_PROFILE: c_int = 0;
 pub const OPENGL_CORE_PROFILE: c_int = 0x00032001;
 pub const OPENGL_COMPAT_PROFILE: c_int = 0x00032002;
 
-pub type GLFWglproc = *const c_void;
-pub type GLFWerrorfun = extern "C" fn(c_int, *const c_char);
-
 pub enum GLFWmonitor {}
 pub enum GLFWwindow {}
+pub type GLFWglproc = *const c_void;
 
-extern {
+pub type GLFWerrorfun = extern "C" fn(c_int, *const c_char);
+pub type GLFWwindowposfun = extern "C" fn(*mut GLFWwindow, c_int, c_int);
+pub type GLFWwindowsizefun = extern "C" fn(*mut GLFWwindow, c_int, c_int);
+pub type GLFWwindowclosefun = extern "C" fn(*mut GLFWwindow);
+pub type GLFWwindowrefreshfun = extern "C" fn(*mut GLFWwindow);
+pub type GLFWwindowfocusfun = extern "C" fn(*mut GLFWwindow, c_int);
+pub type GLFWwindowiconifyfun = extern "C" fn(*mut GLFWwindow, c_int);
+pub type GLFWframebuffersizefun = extern "C" fn(*mut GLFWwindow, c_int, c_int);
+pub type GLFWcursorposfun = extern "C" fn(*mut GLFWwindow, c_double, c_double);
+
+extern "C" {
     pub fn glfwSetErrorCallback(cbfun: GLFWerrorfun) -> GLFWerrorfun;
 
     pub fn glfwInit() -> c_int;
@@ -55,19 +63,19 @@ extern {
     pub fn glfwWaitEvents();
 
     pub fn glfwSetWindowPosCallback(window: *mut GLFWwindow,
-                                    cbfun: extern fn(*mut GLFWwindow, c_int, c_int));
+                                    cbfun: GLFWwindowposfun) -> GLFWwindowposfun;
     pub fn glfwSetWindowSizeCallback(window: *mut GLFWwindow,
-                                     cbfun: extern fn(*mut GLFWwindow, c_int, c_int));
+                                     cbfun: GLFWwindowsizefun) -> GLFWwindowsizefun;
     pub fn glfwSetWindowCloseCallback(window: *mut GLFWwindow,
-                                      cbfun: extern fn(*mut GLFWwindow));
+                                      cbfun: GLFWwindowclosefun) -> GLFWwindowclosefun;
     pub fn glfwSetWindowRefreshCallback(window: *mut GLFWwindow,
-                                        cbfun: extern fn(*mut GLFWwindow));
+                                        cbfun: GLFWwindowrefreshfun) -> GLFWwindowrefreshfun;
     pub fn glfwSetWindowFocusCallback(window: *mut GLFWwindow,
-                                      cbfun: extern fn(*mut GLFWwindow, c_int));
+                                      cbfun: GLFWwindowfocusfun) -> GLFWwindowfocusfun;
     pub fn glfwSetWindowIconifyCallback(window: *mut GLFWwindow,
-                                        cbfun: extern fn(*mut GLFWwindow, c_int));
+                                        cbfun: GLFWwindowiconifyfun) -> GLFWwindowiconifyfun;
     pub fn glfwSetFramebufferSizeCallback(window: *mut GLFWwindow,
-                                          cbfun: extern fn(*mut GLFWwindow, c_int, c_int));
+                                          cbfun: GLFWframebuffersizefun) -> GLFWframebuffersizefun;
     pub fn glfwSetCursorPosCallback(window: *mut GLFWwindow,
-                                    cbfun: extern fn(*mut GLFWwindow, c_double, c_double));
+                                    cbfun: GLFWcursorposfun) -> GLFWcursorposfun;
 }

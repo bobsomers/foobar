@@ -43,65 +43,73 @@ impl<'a> EventQueue<'a> {
 }
 
 // TODO: Can we do anything more robust than print to stderr?
-extern fn rust_glfw_error(error: c_int, description: *const c_char) {
+extern "C" fn rust_glfw_error(error: c_int, description: *const c_char) {
     let desc = unsafe { CStr::from_ptr(description) };
     eprintln!("GLFW Error {}: {}", error, desc.to_string_lossy().into_owned());
 }
 
-extern fn rust_glfw_window_pos(window: *mut sys::GLFWwindow,
-                               xpos: c_int,
-                               ypos: c_int) {
-    EventQueue::from_window(window).push(Event::WindowPos {
-        x: xpos as i32,
-        y: ypos as i32,
-    });
+extern "C" fn rust_glfw_window_pos(window: *mut sys::GLFWwindow,
+                                   xpos: c_int,
+                                   ypos: c_int) {
+    EventQueue::from_window(window).push(
+        Event::WindowPos {
+            x: xpos as i32,
+            y: ypos as i32,
+        }
+    );
 }
 
-extern fn rust_glfw_window_size(window: *mut sys::GLFWwindow,
-                                width: i32,
-                                height: i32) {
-    EventQueue::from_window(window).push(Event::WindowSize {
-        width: width as i32,
-        height: height as i32,
-    });
+extern "C" fn rust_glfw_window_size(window: *mut sys::GLFWwindow,
+                                    width: i32,
+                                    height: i32) {
+    EventQueue::from_window(window).push(
+        Event::WindowSize {
+            width: width as i32,
+            height: height as i32,
+        }
+    );
 }
 
-extern fn rust_glfw_window_close(window: *mut sys::GLFWwindow) {
+extern "C" fn rust_glfw_window_close(window: *mut sys::GLFWwindow) {
     EventQueue::from_window(window).push(Event::WindowClose);
 }
 
-extern fn rust_glfw_window_refresh(window: *mut sys::GLFWwindow) {
+extern "C" fn rust_glfw_window_refresh(window: *mut sys::GLFWwindow) {
     EventQueue::from_window(window).push(Event::WindowRefresh);
 }
 
-extern fn rust_glfw_window_focus(window: *mut sys::GLFWwindow,
-                                 focused: c_int) {
-    EventQueue::from_window(window).push(Event::WindowFocus(
-        focused == sys::TRUE
-    ));
+extern "C" fn rust_glfw_window_focus(window: *mut sys::GLFWwindow,
+                                     focused: c_int) {
+    EventQueue::from_window(window).push(
+        Event::WindowFocus(focused == sys::TRUE)
+    );
 }
 
-extern fn rust_glfw_window_iconify(window: *mut sys::GLFWwindow,
-                                   iconified: c_int) {
-    EventQueue::from_window(window).push(Event::WindowIconify(
-        iconified == sys::TRUE
-    ));
+extern "C" fn rust_glfw_window_iconify(window: *mut sys::GLFWwindow,
+                                       iconified: c_int) {
+    EventQueue::from_window(window).push(
+        Event::WindowIconify(iconified == sys::TRUE)
+    );
 }
 
-extern fn rust_glfw_framebuffer_size(window: *mut sys::GLFWwindow,
-                                     width: c_int,
-                                     height: c_int) {
-    EventQueue::from_window(window).push(Event::FramebufferSize {
-        width: width as i32,
-        height: height as i32,
-    });
+extern "C" fn rust_glfw_framebuffer_size(window: *mut sys::GLFWwindow,
+                                         width: c_int,
+                                         height: c_int) {
+    EventQueue::from_window(window).push(
+        Event::FramebufferSize {
+            width: width as i32,
+            height: height as i32,
+        }
+    );
 }
 
-extern fn rust_glfw_cursor_pos(window: *mut sys::GLFWwindow,
-                               xpos: c_double,
-                               ypos: c_double) {
-    EventQueue::from_window(window).push(Event::CursorPos {
-        x: xpos as f64,
-        y: ypos as f64,
-    });
+extern "C" fn rust_glfw_cursor_pos(window: *mut sys::GLFWwindow,
+                                   xpos: c_double,
+                                   ypos: c_double) {
+    EventQueue::from_window(window).push(
+        Event::CursorPos {
+            x: xpos as f64,
+            y: ypos as f64,
+        }
+    );
 }
