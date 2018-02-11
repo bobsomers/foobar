@@ -1,8 +1,6 @@
-extern crate libc;
-
-use libc::{c_int, c_void};
 use std::collections::VecDeque;
 use std::ffi::{CStr, CString};
+use std::os::raw::{c_int, c_void};
 use std::ptr;
 
 mod cb;

@@ -1,4 +1,4 @@
-use libc::{c_char, c_double, c_int, c_void};
+use std::os::raw::{c_char, c_double, c_int, c_void};
 
 pub const GLFW_TRUE: c_int = 1;
 

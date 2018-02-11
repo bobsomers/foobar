@@ -1,6 +1,6 @@
-use libc::{c_char, c_double, c_int};
 use std::collections::VecDeque;
 use std::ffi::CStr;
+use std::os::raw::{c_char, c_double, c_int};
 
 use super::Event;
 use super::sys;
