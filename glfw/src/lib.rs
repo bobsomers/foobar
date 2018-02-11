@@ -10,7 +10,14 @@ mod sys;
 
 #[derive(Debug)]
 pub enum Event {
-    CursorPos(f64, f64),
+    WindowPos { x: i32, y: i32 },
+    WindowSize { width: i32, height: i32 },
+    WindowClose,
+    WindowRefresh,
+    WindowFocus(bool),
+    WindowIconify(bool),
+    FramebufferSize { width: i32, height: i32 },
+    CursorPos { x: f64, y: f64 },
 }
 
 pub struct Glfw {}
@@ -21,10 +28,8 @@ pub struct Window {
 }
 
 pub fn init() -> Glfw {
-    unsafe {
-        sys::glfwSetErrorCallback(cb::rust_glfw_error);
-        sys::glfwInit()
-    };
+    cb::register_error_callback();
+    unsafe { sys::glfwInit(); }
     Glfw {}
 }
 
@@ -92,12 +97,10 @@ impl Window {
             // Associate this window's event queue with the window in GLFW.
             let user_ptr = &mut *events as *mut _ as *mut c_void;
             sys::glfwSetWindowUserPointer(window, user_ptr);
-
-            // Set up event injection callbacks.
-            sys::glfwSetCursorPosCallback(window, cb::rust_glfw_cursor_pos);
-
-            // TODO: moar
         }
+
+        // Set up event injection callbacks.
+        cb::register_window_callbacks(window);
 
         Window {
             window: window,

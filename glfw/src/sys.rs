@@ -31,6 +31,20 @@ extern {
     pub fn glfwPollEvents();
     pub fn glfwWaitEvents();
 
+    pub fn glfwSetWindowPosCallback(window: *mut GLFWwindow,
+                                    cbfun: extern fn(*mut GLFWwindow, c_int, c_int));
+    pub fn glfwSetWindowSizeCallback(window: *mut GLFWwindow,
+                                     cbfun: extern fn(*mut GLFWwindow, c_int, c_int));
+    pub fn glfwSetWindowCloseCallback(window: *mut GLFWwindow,
+                                      cbfun: extern fn(*mut GLFWwindow));
+    pub fn glfwSetWindowRefreshCallback(window: *mut GLFWwindow,
+                                        cbfun: extern fn(*mut GLFWwindow));
+    pub fn glfwSetWindowFocusCallback(window: *mut GLFWwindow,
+                                      cbfun: extern fn(*mut GLFWwindow, c_int));
+    pub fn glfwSetWindowIconifyCallback(window: *mut GLFWwindow,
+                                        cbfun: extern fn(*mut GLFWwindow, c_int));
+    pub fn glfwSetFramebufferSizeCallback(window: *mut GLFWwindow,
+                                          cbfun: extern fn(*mut GLFWwindow, c_int, c_int));
     pub fn glfwSetCursorPosCallback(window: *mut GLFWwindow,
                                     cbfun: extern fn(*mut GLFWwindow, c_double, c_double));
 }
