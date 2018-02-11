@@ -18,6 +18,20 @@ pub enum Event {
     CursorPos { x: f64, y: f64 },
 }
 
+#[derive(Debug)]
+pub enum Profile {
+    Any,
+    Compat,
+    Core,
+}
+
+#[derive(Debug)]
+pub enum WindowHint {
+    ContextVersion(i32, i32),
+    ForwardCompat(bool),
+    OpenGlProfile(Profile),
+}
+
 pub struct Glfw {}
 
 pub struct Window {
@@ -35,11 +49,7 @@ pub fn get_version() -> (i32, i32, i32) {
     let mut major: c_int = 0;
     let mut minor: c_int = 0;
     let mut rev: c_int = 0;
-
-    unsafe {
-        sys::glfwGetVersion(&mut major, &mut minor, &mut rev);
-    }
-
+    unsafe { sys::glfwGetVersion(&mut major, &mut minor, &mut rev); }
     (major as i32, minor as i32, rev as i32)
 }
 
@@ -57,6 +67,10 @@ impl Drop for Glfw {
     }
 }
 
+fn set_hint(hint: c_int, value: c_int) {
+    unsafe { sys::glfwWindowHint(hint, value); }
+}
+
 impl Glfw {
     // TODO: Add monitor/share arguments.
     pub fn create_window(&mut self,
@@ -70,6 +84,33 @@ impl Glfw {
                                                          ptr::null(),
                                                          ptr::null()) };
         Window::new(glfw_window)
+    }
+
+    pub fn window_hint(&mut self, hint: WindowHint) {
+        match hint {
+            WindowHint::ContextVersion(major, minor) => {
+                set_hint(sys::CONTEXT_VERSION_MAJOR, major);
+                set_hint(sys::CONTEXT_VERSION_MINOR, minor);
+            },
+            WindowHint::ForwardCompat(compat) => {
+                if compat {
+                    set_hint(sys::OPENGL_FORWARD_COMPAT, sys::TRUE);
+                } else {
+                    set_hint(sys::OPENGL_FORWARD_COMPAT, sys::FALSE);
+                }
+            },
+            WindowHint::OpenGlProfile(profile) => {
+                match profile {
+                    Profile::Any => set_hint(sys::OPENGL_PROFILE, sys::OPENGL_ANY_PROFILE),
+                    Profile::Core => set_hint(sys::OPENGL_PROFILE, sys::OPENGL_CORE_PROFILE),
+                    Profile::Compat => set_hint(sys::OPENGL_PROFILE, sys::OPENGL_COMPAT_PROFILE),
+                }
+            }
+        }
+    }
+
+    pub fn default_window_hints(&mut self) {
+        unsafe { sys::glfwDefaultWindowHints(); }
     }
 
     pub fn poll_events(&mut self) {
@@ -106,12 +147,24 @@ impl Window {
         }
     }
 
+    pub fn get_proc_address(&mut self, symbol: &str) -> sys::GLFWglproc {
+        let symbol = CString::new(symbol).unwrap();
+        unsafe { sys::glfwGetProcAddress(symbol.as_ptr()) }
+    }
+
     pub fn make_context_current(&mut self) {
         unsafe { sys::glfwMakeContextCurrent(self.window); }
     }
 
+    pub fn get_framebuffer_size(&mut self) -> (i32, i32) {
+        let mut width: c_int = 0;
+        let mut height: c_int = 0;
+        unsafe { sys::glfwGetFramebufferSize(self.window, &mut width, &mut height); }
+        (width as i32, height as i32)
+    }
+
     pub fn window_should_close(&mut self) -> bool {
-        unsafe { sys::glfwWindowShouldClose(self.window) == sys::GLFW_TRUE }
+        unsafe { sys::glfwWindowShouldClose(self.window) == sys::TRUE }
     }
 
     pub fn swap_buffers(&mut self) {

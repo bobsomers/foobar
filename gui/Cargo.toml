@@ -3,5 +3,8 @@ name = "gui"
 version = "0.1.0"
 authors = ["Bob Somers <bob@bobsomers.com>"]
 
+[dependencies]
+gl = "0.10.0"
+
 [dependencies.glfw]
 path = "../glfw"

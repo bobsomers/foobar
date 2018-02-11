@@ -2,6 +2,7 @@
 name = "glfw"
 version = "0.1.0"
 authors = ["Bob Somers <bob@bobsomers.com>"]
+build = "build.rs"
 
 [build-dependencies]
 cc = "^1.0.4"

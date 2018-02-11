@@ -77,14 +77,14 @@ extern fn rust_glfw_window_refresh(window: *mut sys::GLFWwindow) {
 extern fn rust_glfw_window_focus(window: *mut sys::GLFWwindow,
                                  focused: c_int) {
     EventQueue::from_window(window).push(Event::WindowFocus(
-        focused == sys::GLFW_TRUE
+        focused == sys::TRUE
     ));
 }
 
 extern fn rust_glfw_window_iconify(window: *mut sys::GLFWwindow,
                                    iconified: c_int) {
     EventQueue::from_window(window).push(Event::WindowIconify(
-        iconified == sys::GLFW_TRUE
+        iconified == sys::TRUE
     ));
 }
 
